@@ -166,3 +166,43 @@ JOIN members MB
 ON s.customer_id = mb.customer_id
 WHERE Month(order_date) = 1
 GROUP BY s.customer_id
+
+--- BONUS QUESTIONS
+--- Join All The Things and recreate the table output using the available data:
+
+SELECT s.customer_id, s.order_date, product_name, price,
+		CASE WHEN order_date >= join_date THEN REPLACE(join_date,join_date,'Y')
+				WHEN join_date IS NULL THEN 'N'
+				ELSE REPLACE(join_date,join_date,'N')
+		END AS member
+FROM sales s
+LEFT JOIN menu m
+ON s.product_id	= m.product_id
+LEFT JOIN members MB
+ON s.customer_id = mb.customer_id
+
+---Rank All The Things
+
+WITH alljoin
+AS(
+	SELECT s.customer_id, s.order_date, product_name, price,
+			(CASE WHEN order_date >= join_date THEN REPLACE(join_date,join_date,'Y')
+				 WHEN join_date IS NULL THEN 'N'
+				 ELSE REPLACE(join_date,join_date,'N')
+			END) AS member
+	FROM sales s
+	LEFT JOIN menu m
+	ON s.product_id	= m.product_id
+	LEFT JOIN members MB
+	ON s.customer_id = mb.customer_id
+	),
+allranking 
+AS(
+	SELECT customer_id, order_date, product_name, price, member,
+		   (CASE WHEN member = 'Y' THEN DENSE_RANK() OVER(PARTITION BY customer_id,member ORDER BY order_date)
+			    ELSE NULL
+			END) AS ranking
+	FROM alljoin
+	)
+	SELECT customer_id, order_date, product_name, price, member,ranking
+	FROM allranking
